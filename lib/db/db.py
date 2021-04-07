@@ -12,9 +12,7 @@ def with_commit(func):
   def inner(*args, **kwargs):
     func(*args, **kwargs)
     commit()
-
   return inner
-
 
 @with_commit
 def build():
