@@ -11,16 +11,6 @@ client = commands.Bot(command_prefix=".")
 
 
 
-
-
-
-
-
-
-
-
-
-
 @client.command()
 async def maya(ctx):
     await ctx.send('Maya is sooo cool and sexy!')
