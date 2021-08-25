@@ -3,12 +3,48 @@ import os
 import random
 from discord.ext import commands
 from keepalive import keep_alive
+import json
 from discord.ext.commands import Cog
-from lib.db import db
+from discord.ext.commands import command
+from mybot.db import db
+import tweepy
+from tweepy import Stream
+from tweepy.streaming import StreamListener
 
-client = commands.Bot(command_prefix=".")
+client = commands.Bot(command_prefix=".", intents=discord.Intents.all())
+consumer_key = "YvopGZ7fUskZPhXsX34CkKTpx"
+consumer_secret = "V3sdvQrzPNkISikC3nkuvGkUWWzcmPoyzfdsMCI0CsoVqiBmgK"
+
+### tweet notifs wip
+###
+callback_uri = "oob"
+auth = tweepy.OAuthHandler(consumer_key, consumer_secret, callback_uri)
+redirect_url = auth.get_authorization_url()
 
 
+### member join and leave notif wip
+@client.event
+async def on_message_join(member):
+    channel = client.get_channel(787172074039935036)
+    await channel.send(f"Welcome to the Maya Cult {member.name}!")
+
+
+### all of these are just cute little fun commands
+###
+
+
+@client.command()
+async def hard(ctx):
+    await ctx.send(
+        "Imagine pretending to be hard when you're actually smashing your keyboard on the verge of tears BEGGING your friends on Discord to PLEASE RATIO THIS GUY ON TWITTER HE'S BULLYING ME :(((("
+    )
+
+
+@client.command()
+async def banger(ctx):
+    await ctx.send(
+        "That was a fuckin' BANGER tweet, DON'T BE FRIENDS WTIH ME OR ORBIT ME IF YOU ARE THIS FUCKING SENSITIVE, I don't play into the lefty snowflake sensitive playground shit, go back to whatever twitter shithole you came from, loser"
+    )
 
 
 @client.command()
@@ -57,15 +93,60 @@ async def liar(ctx):
     )
 
 
+
 @client.command()
-async def pronouns(ctx):
-    embed = discord.Embed(title='Pronouns', colour=discord.Colour.red())
-    embed.add_field(name='He/Him      :heart:', value=False, inline=False)
-    embed.add_field(name='She/Her', value=':green_heart:', inline=False)
-    embed.add_field(name='They/Them', value=':purple_heart:', inline=False)
-    embed.add_field(name='Any/All', value=':blue_heart:', inline=False)
-    embed.add_field(name='Ask', value=':yellow_heart:', inline=False)
-    await ctx.send(embed=embed)
+@commands.has_permissions(administrator=True)
+async def pronounrole(ctx, emoji, role: discord.Role):
+    emb = discord.Embed(title='Pronouns', colour=discord.Colour.red())
+    emb.add_field(name='He/Him', value=":heart:", inline=False)
+    emb.add_field(name='She/Her', value=':green_heart:', inline=False)
+    emb.add_field(name='They/Them', value=':purple_heart:', inline=False)
+    emb.add_field(name='Any/All', value=':blue_heart:', inline=False)
+    emb.add_field(name='Ask', value=':yellow_heart:', inline=False)
+    msg = await ctx.channel.send(embed=emb)
+    await msg.add_reaction(emoji)
+
+    with open('reactrole.json') as json_file:
+        data = json.load(json_file)
+
+        new_react_role = {
+            'role_name': role.name,
+            'role_id': role.id,
+            'emoji': emoji,
+            'message_id': msg.id
+        }
+        data.append(new_react_role)
+    with open('reactrole.json', 'w') as j:
+        json.dump(data, j, indent=4)
+
+
+@client.event
+async def on_raw_reaction_add(payload):
+    if payload.member.bot:
+        pass
+    else:
+        with open('reactrole.json') as react_file:
+            data = json.load(react_file)
+            for x in data:
+                if x['emoji'] == payload.emoji.name and x['message_id'] == payload.message_id:
+                    role = discord.utils.get(client.get_guild(payload.guild_id).roles,id=x['role_id'])
+                    await payload.member.add_roles(role)
+@client.event
+async def on_raw_reaction_remove(payload):
+  with open('reactrole.json') as react_file:
+      data = json.load(react_file)
+      for x in data:
+          if x['emoji'] == payload.emoji.name and x['message_id'] == payload.message_id:
+              role = discord.utils.get(client.get_guild(payload.guild_id).roles, id=x['role_id'])
+              await client.get_guild(payload.guild_id).get_member(payload.user_id).remove_roles(role)
+
+#pronoun embed role
+
+
+
+@client.command()
+async def pings(ctx):
+    embed = discord
 
 
 @client.command()
@@ -76,6 +157,8 @@ async def age(ctx):
     await ctx.send(embed=embed)
 
 
+### magic 8 ball code
+###
 magic8 = [
     'No lol', 'thats funny', '...', 'just...keep on trying', 'it seems likely',
     'only if you beg', 'mmm ok', '100%', 'stop wasting my time',
@@ -89,31 +172,6 @@ magic8 = [
 async def m8b(ctx):
     lucky_num = random.randint(0, len(magic8) - 1)
     await ctx.send(magic8[lucky_num])
-
-
-class Welcome(Cog):
-    def __init__(self, bot):
-        self.bot = bot
-
-    @Cog.listener()
-    async def on_ready(self):
-        if not self.bot.ready:
-            self.bot.cogs_ready.ready_up("welcome!")
-
-    @Cog.listener()
-    async def on_member_join(self, member):
-        db.execute("INSERT INTO exp (UserID) VALUES (?)", member.id)
-        await self.bot.get_channel(787172074039935036).send(
-            f"whats up {member.mention}!, Remember to select your <#787169031018643476>"
-        )
-
-    @Cog.listener()
-    async def on_member_leave(self, member):
-        pass
-
-
-def setup(bot):
-    bot.add_cog(Welcome(bot))
 
 
 keep_alive()
