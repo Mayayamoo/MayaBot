@@ -95,7 +95,6 @@ async def liar(ctx):
 
 
 @client.command()
-@commands.has_permissions(administrator=True)
 async def pronounrole(ctx, emoji, role: discord.Role):
     emb = discord.Embed(title='Pronouns', colour=discord.Colour.red())
     emb.add_field(name='He/Him', value=":heart:", inline=False)
@@ -119,7 +118,30 @@ async def pronounrole(ctx, emoji, role: discord.Role):
     with open('reactrole.json', 'w') as j:
         json.dump(data, j, indent=4)
 
+class ReactionRolesNotSetup(commands.CommandError):
+  """reaction roles are not set up"""
+  pass
+def is_setup():
+  async def wrap_function(ctx):
+    data = await ctx.bot.config.find(ctx.guild.id)
+    if data is None:
+      raise ReactionRolesNotSetup
+    if data.get("message_id") is None:
+      raise ReactionRolesNotSetup
+    return True
+  return commands.check(wrap_function)
 
+class Reactions(commands.Cog, name="ReactionRoles"):
+  def __init__(self,bot):
+    self.bot=bot
+  @commands.group(
+    aliases=["rr"], invoke_without_command=True
+  )
+  @commands.guild_only()
+  async def reactionroles(self, ctx):
+    await ctx.invoke(self.bot.get_command("help"), entity="reactionroles")
+def setup(bot):
+  bot.add_cog(Reactions(bot))
 @client.event
 async def on_raw_reaction_add(payload):
     if payload.member.bot:
